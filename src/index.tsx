@@ -19,7 +19,7 @@ import { configureStore } from './state/configureStore';
 console.log('[INDEX] Starting app initialization...');
 const store = configureStore();
 console.log('[INDEX] Store configured:', store);
-const persistor = persistStore(store);
+export const persistor = persistStore(store);
 console.log('[INDEX] Persistor created');
 
 // Add global error handler

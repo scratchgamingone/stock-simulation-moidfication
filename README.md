@@ -29,6 +29,26 @@ Click [Here](https://stockmarket.netlify.com/)!
 
 ![market overview](https://user-images.githubusercontent.com/16801528/47589730-45773080-d96a-11e8-8f13-04a9f0d930a6.jpg)
 
+### 📊 Analytics Dashboard (NEW!)
+
+The all-new Analytics page provides comprehensive insights into your trading activity:
+
+- **📈 Transaction Timeline** - Visualize all your buy/sell activity over time
+- **🏆 Top 20 Popular Stocks** - Track which stocks you trade most frequently
+- **💼 Portfolio Distribution** - See your holdings broken down by value
+- **🔮 Price Predictions** - AI-powered forecasts based on historical data
+- **📉 Historical Charts** - View real stock price history from live APIs (1D to 1Y ranges)
+
+**Features:**
+- Real-time data from Finnhub and Alpha Vantage APIs
+- Interactive Chart.js visualizations
+- Buy/Sell volume analysis
+- Transaction type distribution
+- Stock popularity rankings
+- Linear regression price predictions
+
+See [Analytics Guide](ANALYTICS_GUIDE.md) for detailed documentation.
+
 ### Quest page 
 
 ![quest overview](https://user-images.githubusercontent.com/16801528/47589834-a6066d80-d96a-11e8-80f6-50713ea95fb0.jpg)

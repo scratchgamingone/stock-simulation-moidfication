@@ -2,6 +2,15 @@ import * as React from 'react';
 import { connect } from 'react-redux';
 import { Card, Button, Alert } from 'react-bootstrap';
 import { AppState } from '../../state/AppState';
+import { persistor } from '../../index';
+import { 
+    initializeBackupsFolder, 
+    saveBackup, 
+    getAllBackups, 
+    deleteBackup, 
+    downloadBackup,
+    getBackupsStats
+} from '../../services/backupService';
 
 interface DataManagementProps {
     appState: AppState;
@@ -10,6 +19,7 @@ interface DataManagementProps {
 interface DataManagementState {
     message: string;
     messageType: 'success' | 'danger' | 'info' | '';
+    showBackupsList: boolean;
 }
 
 class DataManagement extends React.Component<DataManagementProps, DataManagementState> {
@@ -18,8 +28,11 @@ class DataManagement extends React.Component<DataManagementProps, DataManagement
         super(props);
         this.state = {
             message: '',
-            messageType: ''
+            messageType: '',
+            showBackupsList: false
         };
+        // Initialize backups folder on component mount
+        initializeBackupsFolder();
     }
 
     handleExportData = () => {
@@ -30,19 +43,11 @@ class DataManagement extends React.Component<DataManagementProps, DataManagement
                 version: '1.0'
             };
 
-            const dataStr = JSON.stringify(dataToExport, null, 2);
-            const dataBlob = new Blob([dataStr], { type: 'application/json' });
-            const url = URL.createObjectURL(dataBlob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `stockmarket-backup-${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
+            // Save to backups folder
+            const backup = saveBackup(dataToExport);
 
             this.setState({
-                message: 'Data exported successfully! Check your downloads folder.',
+                message: `Data exported successfully to backups folder! (${(backup.size / 1024).toFixed(2)} KB)`,
                 messageType: 'success'
             });
         } catch (error) {
@@ -92,21 +97,72 @@ class DataManagement extends React.Component<DataManagementProps, DataManagement
         reader.readAsText(file);
     };
 
-    handleClearData = () => {
+    handleClearData = async () => {
         if (window.confirm('Are you sure you want to clear ALL data? This cannot be undone!')) {
-            localStorage.clear();
-            this.setState({
-                message: 'All data cleared! Page will refresh in 2 seconds.',
-                messageType: 'info'
-            });
-            setTimeout(() => {
-                window.location.reload();
-            }, 2000);
+            try {
+                // Clear redux-persist storage
+                if (persistor) {
+                    await persistor.purge();
+                }
+                
+                // Clear all localStorage
+                localStorage.clear();
+                
+                // Clear sessionStorage as well
+                sessionStorage.clear();
+                
+                this.setState({
+                    message: 'All data cleared! Page will refresh in 2 seconds.',
+                    messageType: 'info'
+                });
+                
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } catch (error) {
+                this.setState({
+                    message: 'Failed to clear data: ' + error,
+                    messageType: 'danger'
+                });
+            }
         }
     };
 
+    handleDeleteBackup = (backupId: string) => {
+        if (window.confirm('Are you sure you want to delete this backup?')) {
+            deleteBackup(backupId);
+            this.setState({
+                message: 'Backup deleted successfully!',
+                messageType: 'success'
+            });
+            // Refresh the backups list by toggling state
+            this.forceUpdate();
+        }
+    };
+
+    handleDownloadBackup = (backupId: string) => {
+        try {
+            downloadBackup(backupId);
+            this.setState({
+                message: 'Backup downloaded successfully!',
+                messageType: 'success'
+            });
+        } catch (error) {
+            this.setState({
+                message: 'Failed to download backup: ' + error,
+                messageType: 'danger'
+            });
+        }
+    };
+
+    toggleBackupsList = () => {
+        this.setState({ showBackupsList: !this.state.showBackupsList });
+    };
+
     render() {
-        const { message, messageType } = this.state;
+        const { message, messageType, showBackupsList } = this.state;
+        const allBackups = getAllBackups();
+        const backupsStats = getBackupsStats();
 
         return (
             <div className="content">
@@ -133,12 +189,83 @@ class DataManagement extends React.Component<DataManagementProps, DataManagement
                                     <div style={{ marginBottom: '30px' }}>
                                         <h5>Export Data</h5>
                                         <p style={{ color: '#666', marginBottom: '15px' }}>
-                                            Save all your simulation data (stocks, transactions, quests, account balance) to a file on your computer.
+                                            Save all your simulation data (stocks, transactions, quests, account balance) to the backups folder.
                                         </p>
                                         <Button variant="primary" onClick={this.handleExportData}>
                                             <i className="pe-7s-download" style={{ marginRight: '5px' }}></i>
-                                            Export All Data
+                                            Export to Backups Folder
                                         </Button>
+                                    </div>
+
+                                    <hr />
+
+                                    <div style={{ marginBottom: '30px' }}>
+                                        <h5>Backups Folder 
+                                            <i 
+                                                className="pe-7s-folder" 
+                                                style={{ marginLeft: '8px', cursor: 'pointer' }}
+                                                onClick={this.toggleBackupsList}
+                                                title="Click to toggle backups list"
+                                            ></i>
+                                        </h5>
+                                        <div style={{ fontSize: '14px', color: '#666', marginBottom: '15px' }}>
+                                            <p><strong>{backupsStats.totalBackups}</strong> backup(s) saved • <strong>{backupsStats.totalSizeKB}</strong> KB total</p>
+                                        </div>
+
+                                        {showBackupsList && (
+                                            <div style={{ 
+                                                backgroundColor: '#f9f9f9', 
+                                                border: '1px solid #ddd', 
+                                                borderRadius: '4px', 
+                                                padding: '15px',
+                                                marginBottom: '15px'
+                                            }}>
+                                                {allBackups.length > 0 ? (
+                                                    <div>
+                                                        {allBackups.map((backup, index) => (
+                                                            <div 
+                                                                key={backup.id} 
+                                                                style={{
+                                                                    padding: '10px',
+                                                                    borderBottom: index < allBackups.length - 1 ? '1px solid #eee' : 'none',
+                                                                    display: 'flex',
+                                                                    justifyContent: 'space-between',
+                                                                    alignItems: 'center'
+                                                                }}
+                                                            >
+                                                                <div>
+                                                                    <strong>{backup.filename}</strong>
+                                                                    <br />
+                                                                    <small style={{ color: '#999' }}>
+                                                                        {new Date(backup.timestamp).toLocaleString()} • {(backup.size / 1024).toFixed(2)} KB
+                                                                    </small>
+                                                                </div>
+                                                                <div>
+                                                                    <Button
+                                                                        variant="sm"
+                                                                        style={{ marginRight: '5px' }}
+                                                                        onClick={() => this.handleDownloadBackup(backup.id)}
+                                                                        title="Download this backup"
+                                                                    >
+                                                                        <i className="pe-7s-download"></i> Download
+                                                                    </Button>
+                                                                    <Button
+                                                                        variant="danger"
+                                                                        size="sm"
+                                                                        onClick={() => this.handleDeleteBackup(backup.id)}
+                                                                        title="Delete this backup"
+                                                                    >
+                                                                        <i className="pe-7s-trash"></i> Delete
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <p style={{ margin: 0, color: '#999' }}>No backups yet. Create one by exporting your data.</p>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
 
                                     <hr />
@@ -187,7 +314,7 @@ class DataManagement extends React.Component<DataManagementProps, DataManagement
                                         <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>
                                             Your data is automatically saved to your browser's local storage every time you make a change. 
                                             The data persists even if you close the browser or restart your computer.
-                                            Export to file if you want a backup or to transfer data to another computer/browser.
+                                            All backups are stored in the backups folder for easy management and recovery.
                                         </p>
                                     </div>
                                 </Card.Body>
