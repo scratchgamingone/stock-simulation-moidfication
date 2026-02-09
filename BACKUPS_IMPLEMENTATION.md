@@ -140,11 +140,30 @@ Every export includes:
 - Stock Market data
 - Quests progress
 - News feed
+- Earning Money data
 - Upgrades purchased
 - Transactions history
 - Account balance
 - Export timestamp
 - Version information
+
+### Earning Money Section
+Your complete earning money progression is saved in every backup:
+- **Total Earnings** - Cumulative money earned throughout your gameplay
+- **Earnings Multiplier** - Current earnings multiplier level
+- **Income Rates** - Active income sources and their rates
+- **Earning History** - Records of all money earned from transactions
+- **Milestones** - Earning achievements and progress checkpoints
+- **Statistics** - Detailed earnings analysis and patterns
+
+### Upgrades Section
+All your upgrade purchases and progression are fully preserved:
+- **Purchased Upgrades** - All upgrades you have bought
+- **Upgrade Levels** - Current level of each upgrade
+- **Unlock Status** - Which upgrades are unlocked and available
+- **Effects** - Applied multipliers and bonuses from upgrades
+- **Purchase History** - Timestamps and records of all upgrade purchases
+- **Achievements** - Milestones reached through upgrade progression
 
 ## 🔄 Backward Compatibility
 

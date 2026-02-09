@@ -18,6 +18,58 @@
     ]
   },
   {
+    "name": "Trading Desk Apprentice",
+    "iconName": "pe-7s-graph1",
+    "goodies": [
+      {
+        "type": "money",
+        "amount": 750
+      }
+    ],
+    "tasks": [
+      {
+        "name": "Complete 5 trades",
+        "questType": "TransactionCount",
+        "amount": 5
+      }
+    ]
+  },
+  {
+    "name": "Build a Starter Portfolio",
+    "iconName": "pe-7s-wallet",
+    "goodies": [
+      {
+        "type": "money",
+        "amount": 1000
+      }
+    ],
+    "tasks": [
+      {
+        "name": "Own 3 different stocks",
+        "questType": "UniqueStockCount",
+        "amount": 3
+      }
+    ]
+  },
+  {
+    "name": "Sector Explorer",
+    "iconName": "pe-7s-global",
+    "goodies": [
+      {
+        "type": "stock",
+        "amount": 1,
+        "stockName": "Axpo"
+      }
+    ],
+    "tasks": [
+      {
+        "name": "Own stocks in 3 categories",
+        "questType": "CategoryCountPossession",
+        "amount": 3
+      }
+    ]
+  },
+  {
     "name": "Be a regular stock buyer",
     "iconName": "pe-7s-cash",
     "goodies": [

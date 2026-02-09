@@ -24,6 +24,9 @@ export type QuestType =
     | 'CategoryPercentPossession' // the per cent of stocks that the user should possess in a single category
     | 'StockInvestmentPercent' // the percent of the capital that should be invested into stocks
     | 'StockPercentPossesion' // the percent of stocks that the user should possess of a single stock
+    | 'TransactionCount' // total buy/sell transactions completed
+    | 'UniqueStockCount' // unique stocks owned (quantity > 0)
+    | 'CategoryCountPossession' // unique categories owned (quantity > 0)
     ;
 
 export interface Goodie {

@@ -1,7 +1,8 @@
 import { call, select } from 'redux-saga/effects';
 import { QuestTask, Stock, StockCategoryValue } from '../AppState';
-import { getCapital, getStockCategoryValues, getStockValue } from '../depot/depotSelector';
+import { getCapital, getPossessedStocks, getStockCategoryValues, getStockValue } from '../depot/depotSelector';
 import { getOwnedStocksAmount, getStocks } from '../stockMarket/stockSelector';
+import { getTransactionCount } from '../transactions/transactionSelectors';
 
 export function* getTaskProgress( task: QuestTask ) {
     let progress = 0;
@@ -20,6 +21,15 @@ export function* getTaskProgress( task: QuestTask ) {
             break;
         case 'StockPercentPossesion':
             progress = yield call( getStockPercentPossessionTaskProgress, task );
+            break;
+        case 'TransactionCount':
+            progress = yield call( getTransactionCountTaskProgress, task );
+            break;
+        case 'UniqueStockCount':
+            progress = yield call( getUniqueStockCountTaskProgress, task );
+            break;
+        case 'CategoryCountPossession':
+            progress = yield call( getCategoryCountTaskProgress, task );
             break;
         default:
             return 0;
@@ -79,4 +89,21 @@ function* getMoneyPossessionTaskProgress( task: QuestTask ) {
 function* getStockTotalPossessionTaskProgress( task: QuestTask ) {
     const ownedStockAmount = yield select( getOwnedStocksAmount );
     return ownedStockAmount * 100 / task.amount;
+}
+
+function* getTransactionCountTaskProgress( task: QuestTask ) {
+    const transactionCount = yield select( getTransactionCount );
+    return transactionCount * 100 / task.amount;
+}
+
+function* getUniqueStockCountTaskProgress( task: QuestTask ) {
+    const possessedStocks = yield select( getPossessedStocks );
+    const uniqueCount = possessedStocks.length;
+    return uniqueCount * 100 / task.amount;
+}
+
+function* getCategoryCountTaskProgress( task: QuestTask ) {
+    const categories = yield select( getStockCategoryValues );
+    const categoryCount = categories.length;
+    return categoryCount * 100 / task.amount;
 }

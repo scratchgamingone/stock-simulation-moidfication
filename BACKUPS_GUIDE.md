@@ -52,10 +52,29 @@ Backups Folder
 - Stock Market data
 - Quests progress
 - News feed
+- Earning Money data
 - Upgrades purchased
 - Transactions history
 - Current account balance
 - Export timestamp and version
+
+#### Earning Money
+Your earning money progression and statistics are fully backed up, including:
+- Total earnings accumulated
+- Earnings multiplier level
+- Money earned from transactions
+- Income sources and rates
+- Earning history and milestones
+- Earning achievements and statistics
+
+#### Upgrades
+All your upgrade purchases and progression are preserved, including:
+- All purchased upgrades
+- Upgrade levels and tiers
+- Unlock status for each upgrade
+- Upgrade effects and multipliers
+- Purchase history and timestamps
+- Upgrade achievements and milestones
 
 ### 2. View All Backups
 
@@ -266,10 +285,74 @@ Step 5: Try safer approach
   "stockMarket": { ... },
   "quests": { ... },
   "news": { ... },
-  "upgrades": { ... },
+  "earningMoney": {
+    "totalEarnings": 50000,
+    "earningsMultiplier": 2.5,
+    "earningHistory": [ ... ],
+    "milestones": [ ... ],
+    "statistics": { ... }
+  },
+  "upgrades": {
+    "purchased": [ ... ],
+    "levels": { ... },
+    "unlocked": [ ... ],
+    "effects": { ... },
+    "history": [ ... ]
+  },
   "transactions": { ... },
   "exportDate": "2026-02-01T10:30:00.000Z",
   "version": "1.0"
+}
+```
+
+#### Earning Money Structure Details
+```json
+{
+  "earningMoney": {
+    "totalEarnings": 50000,
+    "earningsMultiplier": 2.5,
+    "earningHistory": [
+      {
+        "source": "stock_trade",
+        "amount": 1500,
+        "timestamp": "2026-02-01T10:15:00.000Z"
+      }
+    ],
+    "milestones": ["earned_10k", "earned_50k"],
+    "statistics": {
+      "averageEarning": 500,
+      "highestEarning": 5000,
+      "earningStreaks": 15
+    }
+  }
+}
+```
+
+#### Upgrades Structure Details
+```json
+{
+  "upgrades": {
+    "purchased": ["speed_trader", "market_expert", "risk_manager"],
+    "levels": {
+      "speed_trader": 3,
+      "market_expert": 2,
+      "risk_manager": 1
+    },
+    "unlocked": ["speed_trader", "market_expert", "risk_manager", "fortune_teller"],
+    "effects": {
+      "speed_trader": { "tradingSpeed": 1.5 },
+      "market_expert": { "accuracyBonus": 0.1 },
+      "risk_manager": { "lossProtection": 0.05 }
+    },
+    "history": [
+      {
+        "upgradeId": "speed_trader",
+        "purchaseDate": "2026-01-15T08:30:00.000Z",
+        "cost": 5000,
+        "level": 1
+      }
+    ]
+  }
 }
 ```
 
