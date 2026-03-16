@@ -3,6 +3,7 @@ import { connect } from 'react-redux';
 import { Col, Container, Row } from 'react-bootstrap';
 import { AppState, Stock } from '../../state/AppState';
 import { addCustomStock, deleteCustomStock } from '../../state/stockMarket/stockMarketActions';
+import { getStocksByOwnedQuantity } from '../../state/stockMarket/stockSelector';
 import { AddStockCard } from '../Market/AddStockCard';
 
 interface StockManagementProps {
@@ -34,7 +35,7 @@ class StockManagement extends React.Component<StockManagementProps> {
 }
 
 const mapStateToProps = (state: AppState) => ({
-    stocks: state.stockMarket.stocks
+    stocks: getStocksByOwnedQuantity(state)
 });
 
 const mapDispatchToProps = {

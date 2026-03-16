@@ -9,6 +9,7 @@ export const BUY_OR_SELL_STOCKS = 'stockMarketReducer/buy-or-sell-stocks';
 export const CHANGE_STOCK_QUANTITY = 'stockMarketReducer/change-stock-quantity';
 export const UPDATE_STOCK = 'stockMarketReducer/update-stock';
 export const UPDATE_STOCKS = 'stockMarketReducer/update-stocks';
+export const REFRESH_STOCKS_FROM_PUBLIC_API = 'stockMarketReducer/refresh-stocks-from-public-api';
 
 export const loadStocks = () => ({
     type: LOAD_STOCKS
@@ -59,6 +60,10 @@ export const updateStock = ( stockName: string, stock: Stock ): UpdateStockActio
 export const updateStocks = ( updates: UpdateStockData[] ): UpdateStocksAction => ({
     type: UPDATE_STOCKS,
     updates
+});
+
+export const refreshStocksFromPublicApi = (): GenericAction => ({
+    type: REFRESH_STOCKS_FROM_PUBLIC_API
 });
 
 export interface UpdateStockData {

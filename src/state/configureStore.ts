@@ -5,11 +5,13 @@ import storage from 'redux-persist/lib/storage';
 import createSagaMiddleware from 'redux-saga';
 import { all, fork } from 'redux-saga/effects';
 import { AppState } from './AppState';
+import alertsReducer from './alerts/alertsReducer';
 import depotReducer from './depot/depotReducer';
 import depotSaga from './depot/depotSaga';
 import initialLoadSaga from './initialLoad/initialLoadSaga';
 import newsReducer from './news/newsReducer';
 import newsSaga from './news/newsSaga';
+import ordersReducer from './orders/ordersReducer';
 import questReducer from './quests/questReducer';
 import questSaga from './quests/questSaga';
 import stockMarketReducer from './stockMarket/stockMarketReducer';
@@ -37,7 +39,9 @@ export const rootreducer = combineReducers<AppState>({
     quests: questReducer,
     news: newsReducer,
     upgrades: upgradesReducer,
-    transactions: transactionReducer as any
+    transactions: transactionReducer as any,
+    orders: ordersReducer as any,
+    alerts: alertsReducer as any
 });
 
 export const configureStore = () => {

@@ -2,6 +2,7 @@ import * as React from 'react';
 import { connect } from 'react-redux';
 import { Card } from 'react-bootstrap';
 import { AppState, Stock } from '../../state/AppState';
+import { getStocksByOwnedQuantity } from '../../state/stockMarket/stockSelector';
 import { Transaction } from '../../state/transactions/transactionActions';
 import './Transactions.css';
 
@@ -252,7 +253,7 @@ class Transactions extends React.Component<TransactionsProps> {
 
 const mapStateToProps = (state: AppState) => ({
     transactions: (state as any).transactions?.transactions || [],
-    stocks: state.stockMarket.stocks || []
+    stocks: getStocksByOwnedQuantity(state)
 });
 
 export default connect(mapStateToProps)(Transactions);

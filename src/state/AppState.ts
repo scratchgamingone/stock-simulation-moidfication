@@ -91,6 +91,44 @@ export interface TransactionState {
     transactions: Transaction[];
 }
 
+export interface OrderRule {
+    id: string;
+    stockName: string;
+    type: 'STOP_LOSS' | 'TAKE_PROFIT';
+    triggerPrice: number;
+    quantity?: number;
+    isActive: boolean;
+    createdAt: string;
+    triggeredAt?: string;
+}
+
+export interface OrdersState {
+    rules: OrderRule[];
+}
+
+export interface AlertRule {
+    id: string;
+    stockName: string;
+    type: 'PRICE_ABOVE' | 'PRICE_BELOW' | 'VALUE_CHANGE_ABOVE' | 'VALUE_CHANGE_BELOW';
+    threshold: number;
+    isActive: boolean;
+    createdAt: string;
+    triggeredAt?: string;
+}
+
+export interface AlertEvent {
+    id: string;
+    ruleId: string;
+    stockName: string;
+    message: string;
+    createdAt: string;
+}
+
+export interface AlertsState {
+    rules: AlertRule[];
+    events: AlertEvent[];
+}
+
 export interface Transaction {
     id: string;
     type: 'BUY' | 'SELL';
@@ -108,6 +146,8 @@ export interface AppState {
     news: NewsState;
     upgrades: any; // UpgradesState
     transactions: TransactionState;
+    orders: OrdersState;
+    alerts: AlertsState;
 }
 
 export interface GenericAction {

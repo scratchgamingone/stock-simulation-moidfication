@@ -93,19 +93,47 @@ if %ERRORLEVEL% NEQ 0 (
 echo Dependencies installed successfully!
 echo.
 
+REM Start background stock tracker service in separate process
+echo [5/7] Starting background price tracker service...
+set TRACKER_RUNNING=
+for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":4010" ^| findstr "LISTENING"') do (
+    set TRACKER_RUNNING=1
+)
+
+if defined TRACKER_RUNNING (
+    echo Background tracker is already running on port 4010.
+) else (
+    start "Stock Tracker Service" /min cmd /c "cd /d %~dp0 && node scripts\background-price-tracker.js"
+    echo Background tracker started in a separate window.
+)
+
+echo Waiting for background tracker to become ready...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ready=$false; for($i=0; $i -lt 20; $i++){ try { $r=Invoke-RestMethod -Uri 'http://127.0.0.1:4010/health' -Method GET -TimeoutSec 2; if($r.ok){ $ready=$true; break } } catch {}; Start-Sleep -Milliseconds 500 }; if(-not $ready){ exit 1 }"
+if %ERRORLEVEL% NEQ 0 (
+    echo WARNING: Background tracker is not reachable yet. Continuing startup.
+) else (
+    echo Triggering immediate live market refresh before opening app...
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $r=Invoke-RestMethod -Uri 'http://127.0.0.1:4010/refresh-now' -Method POST -TimeoutSec 60; if($r.ok){ Write-Host ('Refresh complete. UpdatedAt: ' + $r.updatedAt) } else { exit 1 } } catch { exit 1 }"
+    if %ERRORLEVEL% NEQ 0 (
+        echo WARNING: Could not trigger immediate refresh. App will still start.
+    )
+)
+echo.
+
 REM Start the development server
-echo [5/6] Starting the development server...
+echo [6/7] Starting the development server...
 echo The application will open automatically in your browser at http://localhost:3000
 echo.
 echo Note: Get a FREE stock API key from https://finnhub.io/register
 echo      and add it to .env file (see README for instructions)
+echo Background tracker endpoint: http://127.0.0.1:4010
 echo.
 echo Press Ctrl+C to stop the server when you're done.
 echo.
 timeout /t 3 >nul
 
 REM Open the browser after a delay
-echo [6/6] Opening browser...
+echo [7/7] Opening browser...
 start "" "http://localhost:3000"
 
 REM Start the development server (this will block)

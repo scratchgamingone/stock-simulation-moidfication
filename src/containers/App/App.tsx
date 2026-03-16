@@ -17,45 +17,14 @@ interface AppProps {
 }
 
 class App extends React.Component<AppProps> {
-
-    constructor(props: AppProps) {
-        super(props);
-        console.log('[APP] Constructor called');
-    }
-
     componentWillMount() {
-        console.log('[APP] componentWillMount - loading state');
         this.props.loadState();
     }
 
-    testButtonClick = () => {
-        console.log('[APP] TEST BUTTON CLICKED!');
-        alert('Test button works!');
-    }
-
     render() {
-        console.log('[APP] Render called');
         return (
 
             <div className="wrapper">
-                <button 
-                    onClick={this.testButtonClick}
-                    style={{
-                        position: 'fixed',
-                        top: '10px',
-                        right: '10px',
-                        zIndex: 99999,
-                        padding: '10px 20px',
-                        backgroundColor: 'red',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '5px',
-                        cursor: 'pointer',
-                        fontSize: '16px'
-                    }}
-                >
-                    TEST BUTTON
-                </button>
                 <NotificationSystemFrame/>
                 <Sidebar
                     currentBalance={this.props.currentMoney}

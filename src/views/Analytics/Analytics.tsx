@@ -3,6 +3,7 @@ import { connect } from 'react-redux';
 import { Card, Row, Col, Table, Badge } from 'react-bootstrap';
 import { AppState, Stock } from '../../state/AppState';
 import { Transaction } from '../../state/transactions/transactionActions';
+import { getStocksByOwnedQuantity } from '../../state/stockMarket/stockSelector';
 import { Line, Bar, Pie } from 'react-chartjs-2';
 import {
     Chart as ChartJS,
@@ -20,7 +21,9 @@ import {
 import { 
     fetchStockHistoricalData, 
     fetchStockPrediction,
-    StockHistoricalData 
+    StockHistoricalData,
+    getApiStatus,
+    getSymbolFromName
 } from '../../services/stockApiService';
 import './Analytics.css';
 
@@ -41,6 +44,7 @@ ChartJS.register(
 interface AnalyticsProps {
     transactions: Transaction[];
     stocks: Stock[];
+    accountValue: number;
 }
 
 interface AnalyticsState {
@@ -49,6 +53,8 @@ interface AnalyticsState {
     prediction: any | null;
     loading: boolean;
     timeRange: '1D' | '1W' | '1M' | '3M' | '1Y';
+    historyError: string | null;
+    shockPercent: number;
 }
 
 interface StockPopularity {
@@ -60,6 +66,41 @@ interface StockPopularity {
     currentValue: number;
 }
 
+interface RebalanceSuggestion {
+    name: string;
+    currentValue: number;
+    targetValue: number;
+    deltaValue: number;
+    action: 'BUY' | 'SELL' | 'HOLD';
+    shares: number;
+    currentWeight: number;
+    targetWeight: number;
+}
+
+interface BenchmarkRiskMetrics {
+    totalPortfolioValue: number;
+    benchmarkValue: number;
+    outperformanceValue: number;
+    outperformancePercent: number;
+    maxDrawdownPercent: number;
+    sharpeRatio: number;
+}
+
+interface HoldingPerformance {
+    name: string;
+    quantity: number;
+    averageCost: number;
+    marketPrice: number;
+    totalBuys: number;
+    totalSells: number;
+    marketValue: number;
+    costBasis: number;
+    realizedPnl: number;
+    unrealizedPnl: number;
+    totalPnl: number;
+    totalPnlPercent: number;
+}
+
 class Analytics extends React.Component<AnalyticsProps, AnalyticsState> {
     constructor(props: AnalyticsProps) {
         super(props);
@@ -68,7 +109,9 @@ class Analytics extends React.Component<AnalyticsProps, AnalyticsState> {
             historicalData: null,
             prediction: null,
             loading: false,
-            timeRange: '1M'
+            timeRange: '1M',
+            historyError: null,
+            shockPercent: 0
         };
     }
 
@@ -220,23 +263,264 @@ class Analytics extends React.Component<AnalyticsProps, AnalyticsState> {
         };
     }
 
+    getBenchmarkRiskMetrics(): BenchmarkRiskMetrics {
+        const { stocks, transactions, accountValue } = this.props;
+        const initialCapital = 10000;
+
+        const currentStockValue = stocks.reduce((sum, stock) => sum + (stock.quantity * stock.value), 0);
+        const totalPortfolioValue = accountValue + currentStockValue;
+
+        const firstDate = transactions.length > 0
+            ? new Date(Math.min(...transactions.map((t) => new Date(t.timestamp).getTime())))
+            : new Date(Date.now() - (30 * 24 * 60 * 60 * 1000));
+
+        const elapsedDays = Math.max(1, Math.floor((Date.now() - firstDate.getTime()) / (24 * 60 * 60 * 1000)));
+        const annualBenchmarkReturn = 0.08;
+        const benchmarkValue = initialCapital * Math.pow(1 + annualBenchmarkReturn, elapsedDays / 365);
+
+        const outperformanceValue = totalPortfolioValue - benchmarkValue;
+        const outperformancePercent = benchmarkValue > 0
+            ? (outperformanceValue / benchmarkValue) * 100
+            : 0;
+
+        const maxPoints = stocks.reduce((max, stock) => Math.max(max, stock.valueHistory?.length || 0), 0);
+        const series: number[] = [];
+
+        if (maxPoints > 1) {
+            for (let index = 0; index < maxPoints; index++) {
+                const snapshotValue = stocks.reduce((sum, stock) => {
+                    const point = stock.valueHistory && stock.valueHistory[index];
+                    const price = point && typeof point.value === 'number' ? point.value : stock.value;
+                    return sum + (stock.quantity * price);
+                }, 0);
+
+                series.push(accountValue + snapshotValue);
+            }
+        } else {
+            series.push(totalPortfolioValue);
+        }
+
+        let peak = series[0] || totalPortfolioValue;
+        let maxDrawdown = 0;
+        const returns: number[] = [];
+
+        for (let index = 0; index < series.length; index++) {
+            const value = series[index];
+            if (value > peak) {
+                peak = value;
+            }
+
+            if (peak > 0) {
+                const drawdown = (value - peak) / peak;
+                if (drawdown < maxDrawdown) {
+                    maxDrawdown = drawdown;
+                }
+            }
+
+            if (index > 0 && series[index - 1] > 0) {
+                returns.push((value - series[index - 1]) / series[index - 1]);
+            }
+        }
+
+        const meanReturn = returns.length > 0
+            ? returns.reduce((sum, item) => sum + item, 0) / returns.length
+            : 0;
+        const variance = returns.length > 1
+            ? returns.reduce((sum, item) => sum + Math.pow(item - meanReturn, 2), 0) / (returns.length - 1)
+            : 0;
+        const stdDev = Math.sqrt(Math.max(variance, 0));
+        const riskFreeDailyReturn = 0.02 / 252;
+        const sharpeRatio = stdDev > 0
+            ? ((meanReturn - riskFreeDailyReturn) / stdDev) * Math.sqrt(252)
+            : 0;
+
+        return {
+            totalPortfolioValue,
+            benchmarkValue,
+            outperformanceValue,
+            outperformancePercent,
+            maxDrawdownPercent: Math.abs(maxDrawdown) * 100,
+            sharpeRatio
+        };
+    }
+
+    getHoldingPerformance(): HoldingPerformance[] {
+        const { transactions, stocks } = this.props;
+        const performanceByStock = new Map<string, {
+            quantity: number;
+            costBasis: number;
+            realizedPnl: number;
+            totalBuys: number;
+            totalSells: number;
+        }>();
+
+        const orderedTransactions = [...transactions].sort(
+            (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        );
+
+        orderedTransactions.forEach((transaction) => {
+            const existing = performanceByStock.get(transaction.stockName) || {
+                quantity: 0,
+                costBasis: 0,
+                realizedPnl: 0,
+                totalBuys: 0,
+                totalSells: 0
+            };
+
+            if (transaction.type === 'BUY') {
+                existing.quantity += transaction.quantity;
+                existing.costBasis += transaction.totalValue;
+                existing.totalBuys += transaction.totalValue;
+            } else {
+                existing.totalSells += transaction.totalValue;
+
+                const safeQuantity = Math.max(existing.quantity, 0);
+                const averageCost = safeQuantity > 0 ? existing.costBasis / safeQuantity : 0;
+                const soldQuantity = Math.min(transaction.quantity, safeQuantity);
+                const soldCost = soldQuantity * averageCost;
+
+                existing.quantity = Math.max(existing.quantity - transaction.quantity, 0);
+                existing.costBasis = Math.max(existing.costBasis - soldCost, 0);
+                existing.realizedPnl += transaction.totalValue - soldCost;
+            }
+
+            performanceByStock.set(transaction.stockName, existing);
+        });
+
+        return Array.from(performanceByStock.entries())
+            .map(([stockName, data]) => {
+                const stock = stocks.find((item) => item.name === stockName);
+                const marketPrice = stock ? stock.value : 0;
+                const marketValue = data.quantity * marketPrice;
+                const unrealizedPnl = marketValue - data.costBasis;
+                const totalPnl = data.realizedPnl + unrealizedPnl;
+                const pnlBase = data.totalBuys > 0 ? data.totalBuys : 1;
+
+                return {
+                    name: stockName,
+                    quantity: data.quantity,
+                    averageCost: data.quantity > 0 ? data.costBasis / data.quantity : 0,
+                    marketPrice,
+                    totalBuys: data.totalBuys,
+                    totalSells: data.totalSells,
+                    marketValue,
+                    costBasis: data.costBasis,
+                    realizedPnl: data.realizedPnl,
+                    unrealizedPnl,
+                    totalPnl,
+                    totalPnlPercent: (totalPnl / pnlBase) * 100
+                };
+            })
+            .sort((a, b) => b.totalPnl - a.totalPnl);
+    }
+
+    getShockSimulation(shockPercent: number) {
+        const stockValueBefore = this.props.stocks.reduce(
+            (sum, stock) => sum + (stock.quantity * stock.value),
+            0
+        );
+        const stockValueAfter = this.props.stocks.reduce(
+            (sum, stock) => sum + (stock.quantity * stock.value * (1 + shockPercent / 100)),
+            0
+        );
+
+        const portfolioBefore = this.props.accountValue + stockValueBefore;
+        const portfolioAfter = this.props.accountValue + stockValueAfter;
+
+        return {
+            stockValueBefore,
+            stockValueAfter,
+            portfolioBefore,
+            portfolioAfter,
+            deltaValue: portfolioAfter - portfolioBefore,
+            deltaPercent: portfolioBefore > 0 ? ((portfolioAfter - portfolioBefore) / portfolioBefore) * 100 : 0
+        };
+    }
+
+    // Rebalancing helper (equal-weight across all currently owned positions)
+    getRebalanceSuggestions(): RebalanceSuggestion[] {
+        const ownedStocks = this.props.stocks.filter(stock => stock.quantity > 0 && stock.value > 0);
+
+        if (ownedStocks.length === 0) {
+            return [];
+        }
+
+        const totalPortfolioValue = ownedStocks.reduce((sum, stock) => sum + stock.quantity * stock.value, 0);
+        const targetValuePerStock = totalPortfolioValue / ownedStocks.length;
+        const targetWeight = 1 / ownedStocks.length;
+
+        return ownedStocks
+            .map((stock) => {
+                const currentValue = stock.quantity * stock.value;
+                const deltaValue = targetValuePerStock - currentValue;
+                const rawShares = Math.floor(Math.abs(deltaValue) / stock.value);
+
+                let action: RebalanceSuggestion['action'] = 'HOLD';
+                if (rawShares > 0) {
+                    action = deltaValue > 0 ? 'BUY' : 'SELL';
+                }
+
+                return {
+                    name: stock.name,
+                    currentValue,
+                    targetValue: targetValuePerStock,
+                    deltaValue,
+                    action,
+                    shares: rawShares,
+                    currentWeight: totalPortfolioValue > 0 ? currentValue / totalPortfolioValue : 0,
+                    targetWeight
+                };
+            })
+            .sort((a, b) => Math.abs(b.deltaValue) - Math.abs(a.deltaValue));
+    }
+
     // Load historical data for a stock
     async loadStockHistory(stockName: string) {
-        this.setState({ loading: true, selectedStock: stockName });
+        this.setState({ loading: true, selectedStock: stockName, historyError: null });
         
         try {
+            const symbol = getSymbolFromName(stockName);
+            if (!symbol) {
+                this.setState({
+                    loading: false,
+                    historicalData: null,
+                    prediction: null,
+                    historyError: 'No market ticker mapping exists for this stock yet.'
+                });
+                return;
+            }
+
             const { timeRange } = this.state;
             const historical = await fetchStockHistoricalData(stockName, timeRange);
             const prediction = await fetchStockPrediction(stockName);
+
+            if (!historical || !historical.prices || historical.prices.length === 0) {
+                const apiStatus = getApiStatus();
+                const noKeysConfigured = !apiStatus.finnhubConfigured && !apiStatus.alphaVantageConfigured;
+
+                this.setState({
+                    historicalData: null,
+                    prediction: null,
+                    loading: false,
+                    historyError: noKeysConfigured
+                        ? 'API keys not detected. Configure REACT_APP_FINNHUB_API_KEY, REACT_APP_ALPHA_VANTAGE_API_KEY, REACT_APP_TWELVE_DATA_API_KEY, or REACT_APP_POLYGON_API_KEY and restart the dev server.'
+                        : `No historical market data returned for ${stockName} (${symbol}) in the selected range.`
+                });
+                return;
+            }
             
             this.setState({
                 historicalData: historical,
                 prediction,
-                loading: false
+                loading: false,
+                historyError: null
             });
         } catch (error) {
             console.error('Error loading stock data:', error);
-            this.setState({ loading: false });
+            this.setState({
+                loading: false,
+                historyError: 'Unexpected API error while loading historical data.'
+            });
         }
     }
 
@@ -307,11 +591,18 @@ class Analytics extends React.Component<AnalyticsProps, AnalyticsState> {
 
     render() {
         const { transactions, stocks } = this.props;
-        const { selectedStock, loading, timeRange } = this.state;
+        const { selectedStock, loading, timeRange, historyError, shockPercent } = this.state;
         const popularStocks = this.getStockPopularity();
+        const holdingPerformance = this.getHoldingPerformance();
         const timelineData = this.getTransactionTimelineData();
         const portfolioData = this.getPortfolioDistribution();
         const transactionTypeData = this.getTransactionTypeDistribution();
+        const benchmarkRiskMetrics = this.getBenchmarkRiskMetrics();
+        const shockSimulation = this.getShockSimulation(shockPercent);
+        const rebalanceSuggestions = this.getRebalanceSuggestions();
+        const highestWeight = rebalanceSuggestions.length > 0
+            ? Math.max(...rebalanceSuggestions.map(item => item.currentWeight))
+            : 0;
         const historicalChart = this.getHistoricalDataChart();
 
         const chartOptions = {
@@ -345,6 +636,114 @@ class Analytics extends React.Component<AnalyticsProps, AnalyticsState> {
                         </Col>
                     </Row>
 
+                    <Row>
+                        <Col md={3}>
+                            <Card>
+                                <Card.Body>
+                                    <p className="card-category">Portfolio Value</p>
+                                    <h4>{this.formatCurrency(benchmarkRiskMetrics.totalPortfolioValue)}</h4>
+                                </Card.Body>
+                            </Card>
+                        </Col>
+                        <Col md={3}>
+                            <Card>
+                                <Card.Body>
+                                    <p className="card-category">Benchmark (8% annual)</p>
+                                    <h4>{this.formatCurrency(benchmarkRiskMetrics.benchmarkValue)}</h4>
+                                </Card.Body>
+                            </Card>
+                        </Col>
+                        <Col md={3}>
+                            <Card>
+                                <Card.Body>
+                                    <p className="card-category">Outperformance</p>
+                                    <h4 className={benchmarkRiskMetrics.outperformanceValue >= 0 ? 'text-success' : 'text-danger'}>
+                                        {this.formatCurrency(benchmarkRiskMetrics.outperformanceValue)}
+                                    </h4>
+                                    <small className={benchmarkRiskMetrics.outperformancePercent >= 0 ? 'text-success' : 'text-danger'}>
+                                        {benchmarkRiskMetrics.outperformancePercent >= 0 ? '+' : ''}{benchmarkRiskMetrics.outperformancePercent.toFixed(2)}%
+                                    </small>
+                                </Card.Body>
+                            </Card>
+                        </Col>
+                        <Col md={3}>
+                            <Card>
+                                <Card.Body>
+                                    <p className="card-category">Risk Snapshot</p>
+                                    <h5 style={{ marginBottom: '6px' }}>Max Drawdown: {benchmarkRiskMetrics.maxDrawdownPercent.toFixed(2)}%</h5>
+                                    <h5 style={{ marginBottom: 0 }}>Sharpe: {benchmarkRiskMetrics.sharpeRatio.toFixed(2)}</h5>
+                                </Card.Body>
+                            </Card>
+                        </Col>
+                    </Row>
+
+                    <Row>
+                        <Col md={12}>
+                            <Card>
+                                <Card.Header>
+                                    <Card.Title as="h4">
+                                        <i className="pe-7s-gleam" style={{ marginRight: '8px' }}></i>
+                                        Market Shock Simulator
+                                    </Card.Title>
+                                    <p className="card-category">Instantly estimate portfolio impact under a broad market move</p>
+                                </Card.Header>
+                                <Card.Body>
+                                    <div style={{ marginBottom: '12px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                                            <strong>Simulated market move: {shockPercent > 0 ? '+' : ''}{shockPercent}%</strong>
+                                            <button
+                                                className="btn btn-sm btn-outline-secondary"
+                                                onClick={() => this.setState({ shockPercent: 0 })}
+                                            >
+                                                Reset
+                                            </button>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min={-30}
+                                            max={30}
+                                            step={1}
+                                            value={shockPercent}
+                                            onChange={(event) => this.setState({ shockPercent: Number(event.target.value) })}
+                                            style={{ width: '100%', marginTop: '10px' }}
+                                        />
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#777', fontSize: '12px' }}>
+                                            <span>-30%</span>
+                                            <span>0%</span>
+                                            <span>+30%</span>
+                                        </div>
+                                    </div>
+                                    <Row>
+                                        <Col md={3}>
+                                            <p className="card-category" style={{ marginBottom: '2px' }}>Stock Value (Current)</p>
+                                            <h5 style={{ marginTop: 0 }}>{this.formatCurrency(shockSimulation.stockValueBefore)}</h5>
+                                        </Col>
+                                        <Col md={3}>
+                                            <p className="card-category" style={{ marginBottom: '2px' }}>Stock Value (Simulated)</p>
+                                            <h5 style={{ marginTop: 0 }}>{this.formatCurrency(shockSimulation.stockValueAfter)}</h5>
+                                        </Col>
+                                        <Col md={3}>
+                                            <p className="card-category" style={{ marginBottom: '2px' }}>Portfolio (Simulated)</p>
+                                            <h5 style={{ marginTop: 0 }}>{this.formatCurrency(shockSimulation.portfolioAfter)}</h5>
+                                        </Col>
+                                        <Col md={3}>
+                                            <p className="card-category" style={{ marginBottom: '2px' }}>Portfolio Delta</p>
+                                            <h5
+                                                className={shockSimulation.deltaValue >= 0 ? 'text-success' : 'text-danger'}
+                                                style={{ marginTop: 0 }}
+                                            >
+                                                {this.formatCurrency(shockSimulation.deltaValue)}
+                                            </h5>
+                                            <small className={shockSimulation.deltaPercent >= 0 ? 'text-success' : 'text-danger'}>
+                                                {shockSimulation.deltaPercent >= 0 ? '+' : ''}{shockSimulation.deltaPercent.toFixed(2)}%
+                                            </small>
+                                        </Col>
+                                    </Row>
+                                </Card.Body>
+                            </Card>
+                        </Col>
+                    </Row>
+
                     {/* Transaction Timeline */}
                     <Row>
                         <Col md={12}>
@@ -363,6 +762,71 @@ class Analytics extends React.Component<AnalyticsProps, AnalyticsState> {
                                             </div>
                                         )}
                                     </div>
+                                </Card.Body>
+                            </Card>
+                        </Col>
+                    </Row>
+
+                    <Row>
+                        <Col md={12}>
+                            <Card>
+                                <Card.Header>
+                                    <Card.Title as="h4">
+                                        <i className="pe-7s-medal" style={{ marginRight: '8px' }}></i>
+                                        Position Performance Leaderboard
+                                    </Card.Title>
+                                    <p className="card-category">Realized + unrealized P/L ranked by stock</p>
+                                </Card.Header>
+                                <Card.Body>
+                                    {holdingPerformance.length > 0 ? (
+                                        <div className="table-responsive">
+                                            <Table hover>
+                                                <thead>
+                                                    <tr>
+                                                        <th>#</th>
+                                                        <th>Stock</th>
+                                                        <th>Open Qty</th>
+                                                        <th>Avg Cost</th>
+                                                        <th>Market Price</th>
+                                                        <th>Market Value</th>
+                                                        <th>Realized P/L</th>
+                                                        <th>Unrealized P/L</th>
+                                                        <th>Total P/L</th>
+                                                        <th>Total Return</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {holdingPerformance.map((item, index) => (
+                                                        <tr key={item.name}>
+                                                            <td><strong>#{index + 1}</strong></td>
+                                                            <td><strong>{item.name}</strong></td>
+                                                            <td>{item.quantity}</td>
+                                                            <td>{this.formatCurrency(item.averageCost)}</td>
+                                                            <td>{this.formatCurrency(item.marketPrice)}</td>
+                                                            <td>{this.formatCurrency(item.marketValue)}</td>
+                                                            <td className={item.realizedPnl >= 0 ? 'text-success' : 'text-danger'}>
+                                                                {this.formatCurrency(item.realizedPnl)}
+                                                            </td>
+                                                            <td className={item.unrealizedPnl >= 0 ? 'text-success' : 'text-danger'}>
+                                                                {this.formatCurrency(item.unrealizedPnl)}
+                                                            </td>
+                                                            <td className={item.totalPnl >= 0 ? 'text-success' : 'text-danger'}>
+                                                                <strong>{this.formatCurrency(item.totalPnl)}</strong>
+                                                            </td>
+                                                            <td className={item.totalPnlPercent >= 0 ? 'text-success' : 'text-danger'}>
+                                                                {item.totalPnlPercent >= 0 ? '+' : ''}{item.totalPnlPercent.toFixed(2)}%
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </Table>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center" style={{ padding: '40px' }}>
+                                            <i className="pe-7s-info" style={{ fontSize: '48px', color: '#999', marginBottom: '10px', display: 'block' }}></i>
+                                            <p className="text-muted">No transaction history available for P/L analysis</p>
+                                        </div>
+                                    )}
                                 </Card.Body>
                             </Card>
                         </Col>
@@ -405,6 +869,69 @@ class Analytics extends React.Component<AnalyticsProps, AnalyticsState> {
                                             </div>
                                         )}
                                     </div>
+                                </Card.Body>
+                            </Card>
+                        </Col>
+                    </Row>
+
+                    {/* Top 20 Popular Stocks */}
+                    <Row>
+                        <Col md={12}>
+                            <Card>
+                                <Card.Header>
+                                    <Card.Title as="h4">
+                                        <i className="pe-7s-shuffle" style={{ marginRight: '8px' }}></i>
+                                        Portfolio Rebalancing Assistant
+                                    </Card.Title>
+                                    <p className="card-category">Equal-weight target based on current holdings</p>
+                                </Card.Header>
+                                <Card.Body>
+                                    {rebalanceSuggestions.length > 0 ? (
+                                        <>
+                                            <p className="text-muted" style={{ marginBottom: '12px' }}>
+                                                Largest position concentration: <strong>{(highestWeight * 100).toFixed(1)}%</strong>
+                                            </p>
+                                            <div className="table-responsive">
+                                                <Table hover>
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Stock</th>
+                                                            <th>Current Weight</th>
+                                                            <th>Target Weight</th>
+                                                            <th>Current Value</th>
+                                                            <th>Target Value</th>
+                                                            <th>Action</th>
+                                                            <th>Suggested Shares</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {rebalanceSuggestions.map((item) => (
+                                                            <tr key={item.name}>
+                                                                <td><strong>{item.name}</strong></td>
+                                                                <td>{(item.currentWeight * 100).toFixed(1)}%</td>
+                                                                <td>{(item.targetWeight * 100).toFixed(1)}%</td>
+                                                                <td>{this.formatCurrency(item.currentValue)}</td>
+                                                                <td>{this.formatCurrency(item.targetValue)}</td>
+                                                                <td>
+                                                                    <Badge bg={item.action === 'BUY' ? 'success' : item.action === 'SELL' ? 'warning' : 'secondary'}>
+                                                                        {item.action}
+                                                                    </Badge>
+                                                                </td>
+                                                                <td>
+                                                                    {item.shares > 0 ? item.shares : '—'}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </Table>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="text-center" style={{ padding: '40px' }}>
+                                            <i className="pe-7s-info" style={{ fontSize: '48px', color: '#999', marginBottom: '10px', display: 'block' }}></i>
+                                            <p className="text-muted">Own at least one stock to generate rebalancing suggestions</p>
+                                        </div>
+                                    )}
                                 </Card.Body>
                             </Card>
                         </Col>
@@ -542,7 +1069,9 @@ class Analytics extends React.Component<AnalyticsProps, AnalyticsState> {
                                             <div className="text-center" style={{ padding: '80px' }}>
                                                 <i className="pe-7s-info" style={{ fontSize: '48px', color: '#999', marginBottom: '10px', display: 'block' }}></i>
                                                 <p className="text-muted">
-                                                    {selectedStock ? 'No historical data available or API key not configured' : 'Select a stock to view its history'}
+                                                    {selectedStock
+                                                        ? (historyError || 'No historical data available for this stock')
+                                                        : 'Select a stock to view its history'}
                                                 </p>
                                             </div>
                                         )}
@@ -559,7 +1088,8 @@ class Analytics extends React.Component<AnalyticsProps, AnalyticsState> {
 
 const mapStateToProps = (state: AppState) => ({
     transactions: (state as any).transactions?.transactions || [],
-    stocks: state.stockMarket.stocks || []
+    stocks: getStocksByOwnedQuantity(state),
+    accountValue: state.depot.accountValue
 });
 
 export default connect(mapStateToProps)(Analytics);

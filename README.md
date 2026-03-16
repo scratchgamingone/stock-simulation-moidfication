@@ -96,6 +96,8 @@ After running `yarn start`, the application will automatically open in your brow
 - `yarn start` - Start the development server (opens at http://localhost:3000)
 - `yarn build` - Create a production build
 - `yarn storybook` - Test the components with [Storybook](https://github.com/storybooks/storybook)
+- `yarn start:tracker` - Run the background stock tracker service
+- `setup-tracker-autostart.bat` - Configure Windows auto-start for the tracker at sign-in
 
 ## Live Stock Market Data Integration
 
@@ -108,6 +110,10 @@ This simulation supports integration with real-time stock market data APIs!
      - Free tier: 60 API calls/minute
    - **Alpha Vantage** (Alternative): https://www.alphavantage.co/support/#api-key
      - Free tier: 5 API calls/minute, 500 calls/day
+    - **Twelve Data** (Alternative): https://twelvedata.com/
+       - Free tier limits can change; verify current limits on provider page
+    - **Polygon.io** (Alternative): https://polygon.io/
+       - Free tier limits can change; verify current limits on provider page
 
 2. **Create `.env` file** in the project root:
    ```bash
@@ -124,6 +130,14 @@ This simulation supports integration with real-time stock market data APIs!
    # OR for Alpha Vantage
    REACT_APP_ALPHA_VANTAGE_API_KEY=your_alpha_vantage_key_here
    REACT_APP_USE_LIVE_DATA=true
+
+   # OR for Twelve Data
+   REACT_APP_TWELVE_DATA_API_KEY=your_twelve_data_key_here
+   REACT_APP_USE_LIVE_DATA=true
+
+   # OR for Polygon.io
+   REACT_APP_POLYGON_API_KEY=your_polygon_key_here
+   REACT_APP_USE_LIVE_DATA=true
    ```
 
 4. **Restart the development server** for changes to take effect
@@ -133,7 +147,16 @@ This simulation supports integration with real-time stock market data APIs!
 - **Automatic Fallback**: If live data is unavailable, the simulation uses realistic simulated data
 - **Rate Limiting**: Built-in delays to respect API rate limits
 - **Real Stock Symbols**: Maps simulation stocks to real market symbols (e.g., Apple → AAPL)
-- **Multiple Providers**: Supports Finnhub and Alpha Vantage APIs
+- **Multiple Providers**: Supports Finnhub, Alpha Vantage, Twelve Data, and Polygon APIs
+- **Startup Sync**: On application startup/sign-in, stock prices are automatically refreshed from the public stock API (when `REACT_APP_USE_LIVE_DATA=true`)
+
+### Keep Background Tracking Running After Reboot (Windows)
+
+If you want the tracker to continue automatically after PC restart:
+
+1. Run `setup-tracker-autostart.bat` once.
+2. Sign out/sign in (or reboot) to verify the task starts automatically.
+3. Keep your `.env` API keys configured so the tracker can fetch live prices.
 
 ### Supported Stocks
 
