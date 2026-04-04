@@ -1,0 +1,206 @@
+[
+  {
+    "name": "Swiss Life AG",
+    "value": 345.44,
+    "volatility": 0.1,
+    "type": "Finance"
+  },
+  {
+    "name": "Spotify",
+    "value": 168.90,
+    "volatility":1,
+    "type": "Technology"
+  },
+  {
+    "name": "SolarCity",
+    "value": 20.76,
+    "volatility": 2,
+    "type": "Energy"
+  },
+  {
+    "name": "UBS AG",
+    "value": 327.44,
+    "volatility": 2,
+    "type": "Finance"
+  },
+  {
+    "name": "SHELL",
+    "value": 69.38,
+    "volatility": 3,
+    "type": "Raw Materials"
+  },
+  {
+    "name": "Card Services AG",
+    "value": 1736.23,
+    "volatility": 2,
+    "type": "Finance"
+  },
+  {
+    "name": "Apple",
+    "value": 185.11,
+    "volatility": 0.5,
+    "type": "Technology"
+  },
+  {
+    "name": "Samsung",
+    "value": 2210.03,
+    "volatility": 1,
+    "type": "Technology"
+  },
+  {
+    "name": "Holcim AG",
+    "value": 898.98,
+    "volatility": 1,
+    "type": "Raw Materials"
+  },
+  {
+    "name": "TESLA",
+    "value": 348.66,
+    "volatility": 1,
+    "type": "Technology"
+  },
+  {
+    "name": "Murphy OIL",
+    "value": 200.07,
+    "volatility": 2,
+    "type": "Raw Materials"
+  },
+  {
+    "name": "EWZ",
+    "value": 88.76,
+    "volatility": 1,
+    "type": "Energy"
+  },
+  {
+    "name": "Credit Suisse AG",
+    "value": 178.32,
+    "volatility": 1.5,
+    "type": "Finance"
+  },
+  {
+    "name": "Glencore",
+    "value": 30.64,
+    "volatility": 3,
+    "type": "Raw Materials"
+  },
+  {
+    "name": "TroubleShooters",
+    "value": 40.50,
+    "volatility": 3,
+    "type": "Fire Arms"
+  },
+  {
+    "name": "AT&T",
+    "value": 658.01,
+    "volatility": 1.5,
+    "type": "Technology"
+  },
+  {
+    "name": "Alphabet",
+    "value": 1115.65,
+    "volatility": 1,
+    "type": "Technology"
+  },
+  {
+    "name": "Ruag",
+    "value": 413.25,
+    "volatility": 3,
+    "type": "Fire Arms"
+  },
+  {
+    "name": "Axpo",
+    "value": 115.2,
+    "volatility": 1.5,
+    "type": "Energy"
+  },
+  {
+    "name": "Swiss RE",
+    "value": 85.7,
+    "volatility": 0.5,
+    "type": "Finance"
+  },
+  {
+    "name": "Wind Power AG",
+    "value": 333.333,
+    "volatility": 1,
+    "type": "Energy"
+  },
+  {
+    "name": "Wood Holding AG",
+    "value": 124.32,
+    "volatility": 0.5,
+    "type": "Raw Materials"
+  },
+  {
+    "name": "FuchsGroup AG",
+    "value": 20.01,
+    "volatility": 2,
+    "type": "Technology"
+  },
+  {
+    "name": "NVIDIA",
+    "value": 921.44,
+    "volatility": 1.8,
+    "type": "Technology"
+  },
+  {
+    "name": "Microsoft",
+    "value": 413.27,
+    "volatility": 0.9,
+    "type": "Technology"
+  },
+  {
+    "name": "JPMorgan Chase",
+    "value": 194.62,
+    "volatility": 0.8,
+    "type": "Finance"
+  },
+  {
+    "name": "BlackRock",
+    "value": 812.31,
+    "volatility": 1.1,
+    "type": "Finance"
+  },
+  {
+    "name": "NextEra Energy",
+    "value": 73.58,
+    "volatility": 1.3,
+    "type": "Energy"
+  },
+  {
+    "name": "Chevron",
+    "value": 162.47,
+    "volatility": 1.6,
+    "type": "Energy"
+  },
+  {
+    "name": "Rio Tinto",
+    "value": 67.24,
+    "volatility": 1.4,
+    "type": "Raw Materials"
+  },
+  {
+    "name": "BHP Group",
+    "value": 58.93,
+    "volatility": 1.2,
+    "type": "Raw Materials"
+  },
+  {
+    "name": "Lockheed Martin",
+    "value": 469.85,
+    "volatility": 1.7,
+    "type": "Fire Arms"
+  },
+  {
+    "name": "Northrop Grumman",
+    "value": 451.19,
+    "volatility": 1.6,
+    "type": "Fire Arms"
+  },
+  {
+    "name": "MasterCard",
+    "value": 2001.00,
+    "volatility": 1,
+    "type": "Finance"
+  }
+]

@@ -1,0 +1,28 @@
+.transaction-list {
+    /* Transactions list styles */
+}
+
+.badge {
+    padding: 5px 10px;
+    border-radius: 3px;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.badge-success {
+    background-color: #28a745;
+    color: white;
+}
+
+.badge-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+.text-success {
+    color: #28a745 !important;
+}
+
+.text-danger {
+    color: #dc3545 !important;
+}
