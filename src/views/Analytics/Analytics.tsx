@@ -36,6 +36,7 @@ import {
     skewness,
     valueAtRisk
 } from '../../util/statisticsToolkit';
+import { statisticsStudyGuide } from './statisticsStudyGuide';
 import './Analytics.css';
 
 // Register ChartJS components
@@ -892,6 +893,46 @@ class Analytics extends React.Component<AnalyticsProps, AnalyticsState> {
                                             <h5 style={{ marginTop: 0 }}>{portfolioStatistics.trendRSquared.toFixed(2)}</h5>
                                         </Col>
                                     </Row>
+                                </Card.Body>
+                            </Card>
+                        </Col>
+                    </Row>
+
+                    <Row>
+                        <Col md={12}>
+                            <Card>
+                                <Card.Header>
+                                    <Card.Title as="h4">
+                                        <i className="pe-7s-study" style={{ marginRight: '8px' }}></i>
+                                        Statistics Major Quick Guide (50 Concepts)
+                                    </Card.Title>
+                                    <p className="card-category">Plain-English cheat sheet with formulas and practical relevance in this simulator</p>
+                                </Card.Header>
+                                <Card.Body>
+                                    <div className="table-responsive">
+                                        <Table hover>
+                                            <thead>
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>Concept</th>
+                                                    <th>Easy Definition</th>
+                                                    <th>Quick Formula</th>
+                                                    <th>Why It Matters Here</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {statisticsStudyGuide.map((item, index) => (
+                                                    <tr key={item.term}>
+                                                        <td><strong>{index + 1}</strong></td>
+                                                        <td><strong>{item.term}</strong></td>
+                                                        <td>{item.plainEnglish}</td>
+                                                        <td><code>{item.quickFormula}</code></td>
+                                                        <td>{item.whyItMatters}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </Table>
+                                    </div>
                                 </Card.Body>
                             </Card>
                         </Col>
